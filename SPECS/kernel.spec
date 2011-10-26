@@ -51,7 +51,7 @@ Summary: The Linux kernel
 # For non-released -rc kernels, this will be prepended with "0.", so
 # for example a 3 here will become 0.3
 #
-%global baserelease 1
+%global baserelease 2
 %global fedora_build %{baserelease}
 
 # base_sublevel is the kernel version we're starting with and patching
@@ -105,6 +105,8 @@ Summary: The Linux kernel
 %define with_smp       %{?_without_smp:       0} %{?!_without_smp:       1}
 # kernel-PAE (only valid for i686)
 %define with_pae       %{?_without_pae:       0} %{?!_without_pae:       1}
+# linpus-Mars kernel-PAEdebug (only valid for PAE, PAE must be select) marstian
+%define with_paedebug  %{?_without_paedebug:  0} %{?!_without_paedebug:  1}
 # kernel-debug
 %define with_debug     %{?_without_debug:     0} %{?!_without_debug:     1}
 # kernel-doc
@@ -442,6 +444,11 @@ Summary: The Linux kernel
 %if %{with_pae}
 %define with_pae_debug %{with_debug}
 %endif
+##marstian
+%if %{with_paedebug}  
+%define with_pae_debug 1  
+%endif
+##marstian end
 
 # Architectures we build tools/cpupower on
 %define cpupowerarchs %{ix86} x86_64 ppc ppc64
@@ -592,6 +599,8 @@ Source1000: config-local
 # Sources for kernel-tools
 Source2000: cpupower.service
 Source2001: cpupower.config
+#linpus source add
+Source3001: linpus-acer-wmi.c
 
 # Here should be only the patches up to the upstream canonical Linus tree.
 
@@ -751,6 +760,14 @@ Patch21002: mmc-Always-check-for-lower-base-frequency-quirk-for-.patch
 Patch21020: 0001-mm-vmscan-Limit-direct-reclaim-for-higher-order-allo.patch
 Patch21021: 0002-mm-Abort-reclaim-compaction-if-compaction-can-procee.patch
 
+
+#linpus mars start patch
+Patch30000: linpus-netlink.patch
+Patch30001: linpus-atkbd.patch
+Patch30002: linpus-ideapad-laptop.patch
+Patch30005: linpus-bcm-build-dep.patch
+Patch30006: linpus-asus-wmi_for_hotkey.patch
+Patch30007: linpus-bootup-messages.patch
 %endif
 
 BuildRoot: %{_tmppath}/kernel-%{KVERREL}-root
@@ -1384,6 +1401,15 @@ ApplyPatch utrace.patch
 ApplyPatch 0001-mm-vmscan-Limit-direct-reclaim-for-higher-order-allo.patch
 ApplyPatch 0002-mm-Abort-reclaim-compaction-if-compaction-can-procee.patch
 
+#linpus mars start patch
+ApplyPatch linpus-netlink.patch
+ApplyPatch linpus-atkbd.patch
+ApplyPatch linpus-ideapad-laptop.patch
+ApplyPatch linpus-bcm-build-dep.patch  #build bcm wl.ko need this patch
+ApplyPatch linpus-asus-wmi_for_hotkey.patch  #asus-wmi hotkey support
+ApplyPatch linpus-bootup-messages.patch   #remove some garbage message at boot time
+cp -af %{SOURCE3001} drivers/platform/x86/acer-wmi.c  #linpus mars: cover this file because I can't maintain it. It write by tomson and leon.
+
 # END OF PATCH APPLICATIONS
 
 %endif
@@ -1485,6 +1511,8 @@ BuildKernel() {
 
     KernelVer=%{version}-%{release}.%{_target_cpu}${Flavour:+.${Flavour}}
     echo BUILDING A KERNEL FOR ${Flavour} %{_target_cpu}...
+    #linpus mars
+    echo ${KernelVer} >	~/rpmbuild/SPECS/KernelVer 
 
     %if 0%{?stable_update}
     # make sure SUBLEVEL is incremented on a stable release.  Sigh 3.x.
@@ -2085,6 +2113,16 @@ fi
 # and build.
 
 %changelog
+* Wed Oct 26 2011 joejiang@linpus.com - 3.1.0-2
+- update atkbd.c
+- add linpus-bootup-messages.patch
+- add NTFS support
+- cover acer-wmi.c instead of use patch
+- patch ideapad-laptop.c, add patch for bcm build dependence(used
+  in driver-add package)
+- patch netlink.h , atkbd.h
+- add linpus-asus-wmi_for_hotkey.patch
+
 * Mon Oct 24 2011 Chuck Ebbert <cebbert@redhat.com> 3.1.0-1
 - Linux 3.1
 
